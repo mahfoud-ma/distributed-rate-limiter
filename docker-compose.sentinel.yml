@@ -1,0 +1,105 @@
+services:
+  api:
+    build: .
+    container_name: rate_limiter_api_ha
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_SENTINEL_HOSTS=sentinel1:26379,sentinel2:26379,sentinel3:26379
+      - REDIS_MASTER_NAME=mymaster
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    depends_on:
+      - redis-master
+      - sentinel1
+      - sentinel2
+      - sentinel3
+    restart: unless-stopped
+    networks:
+      - rate_limiter_ha_network
+
+  redis-master:
+    image: redis:7-alpine
+    container_name: redis_master
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+  redis-replica1:
+    image: redis:7-alpine
+    container_name: redis_replica1
+    command: redis-server --port 6380 --replicaof redis-master 6379 --replica-read-only yes
+    ports:
+      - "6380:6380"
+    depends_on:
+      - redis-master
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+  redis-replica2:
+    image: redis:7-alpine
+    container_name: redis_replica2
+    command: redis-server --port 6381 --replicaof redis-master 6379 --replica-read-only yes
+    ports:
+      - "6381:6381"
+    depends_on:
+      - redis-master
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+  sentinel1:
+    image: redis:7-alpine
+    container_name: redis_sentinel1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26379:26379"
+    depends_on:
+      - redis-master
+      - redis-replica1
+      - redis-replica2
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+  sentinel2:
+    image: redis:7-alpine
+    container_name: redis_sentinel2
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26380:26379"
+    depends_on:
+      - redis-master
+      - redis-replica1
+      - redis-replica2
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+  sentinel3:
+    image: redis:7-alpine
+    container_name: redis_sentinel3
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26381:26379"
+    depends_on:
+      - redis-master
+      - redis-replica1
+      - redis-replica2
+    networks:
+      - rate_limiter_ha_network
+    restart: unless-stopped
+
+networks:
+  rate_limiter_ha_network:
+    driver: bridge

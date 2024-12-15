@@ -1,0 +1,42 @@
+services:
+  api:
+    build: .
+    container_name: rate_limiter_api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - rate_limiter_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: rate_limiter_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - rate_limiter_network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  rate_limiter_network:
+    driver: bridge
