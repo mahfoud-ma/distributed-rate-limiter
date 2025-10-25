@@ -40,9 +40,9 @@ A production-ready distributed rate limiting service that prevents API abuse thr
 ┌─────────────────────────────────┐
 │      FastAPI Application        │
 │                                 │
-│  ┌──────────────────────────┐  │
-│  │   Rate Limit Middleware  │  │ ◄── Intercepts ALL requests
-│  └───────────┬──────────────┘  │
+│  ┌──────────────────────────┐   │
+│  │   Rate Limit Middleware  │   │ <── Intercepts ALL requests
+│  └───────────┬──────────────┘   │
 │              │                  │
 │              ▼                  │
 │     Check Redis Counter         │
